@@ -1,4 +1,4 @@
 values_cookies.py
 tests/
 __pycache__
-.csv
+*.csv

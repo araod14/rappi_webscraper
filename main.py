@@ -6,77 +6,99 @@ from selenium.webdriver.chrome.service import Service
 import pandas as pd
 import lxml.html
 import time
+import datetime
 
 
-adress = str(input("Ingrese la direccion: "))
-#adress = "Malabia 500, capital federal"
-agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246'
-service = Service()
-options = webdriver.ChromeOptions()
-#options.add_argument('--headless')
-options.add_argument(f"--user-agent={agent}")
+def initialize_driver(address):
+    """
+    Function to initialize the webdriver with the specified address using Google Chrome.
+    """
+    agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246'
+    service = Service()
+    options = webdriver.ChromeOptions()
+    #options.add_argument('--headless')
+    options.add_argument(f"--user-agent={agent}")
 
-link = "https://www.rappi.com.ar/restaurantes"
+    link = "https://www.rappi.com.ar/restaurantes"
 
-driver = webdriver.Chrome(service=service, options=options)
-driver.get(link) #
+    driver = webdriver.Chrome(service=service, options=options)
+    driver.get(link)
 
-#-----------------Adding cookies----------------
-"""
-for cookie in cookies:
-    driver.add_cookie(cookie)
-driver.refresh()
-"""
+    add_address(driver, address)
+    select_category(driver)
 
-#------------------Adding adrres-------------------
-adress_click = driver.find_element(By.XPATH, '//*[@id="rappi-web-toolbar"]/div[2]/div/div/div')
-adress_click.click()
-time.sleep(2)
+    return driver
 
-adress_input = driver.find_element(By.XPATH, '//div[@class="chakra-input__group css-4302v8"]/input')
-adress_input.send_keys(adress)
-time.sleep(2)
+def add_address(driver, address):
+    """
+    Function to add the given address in the input field on the website to retrieve the restaurant details.
+    """
+    adress_click = driver.find_element(By.XPATH, '//*[@id="rappi-web-toolbar"]/div[2]/div/div/div')
+    adress_click.click()
+    time.sleep(2)
 
-choice_click = driver.find_element(By.XPATH, '//li[@class="sc-hAZoDl FcjuD sc-ikZpkk fpunMk"]/button')
-choice_click.click()
-time.sleep(2)
+    address_input = driver.find_element(By.XPATH, '//div[@class="chakra-input__group css-4302v8"]/input')
+    address_input.send_keys(address)
+    time.sleep(2)
 
-confirm_click = driver.find_element(By.XPATH, '//div[@class="css-ldo4d5"]/button')
-confirm_click.click()
-time.sleep(2)
+    choice_click = driver.find_element(By.XPATH, '//li[@class="sc-hAZoDl FcjuD sc-ikZpkk fpunMk"]/button')
+    choice_click.click()
+    time.sleep(2)
 
-save_click = driver.find_element(By.XPATH, '//div[@class="css-ldo4d5"]/button')
-save_click.click()
+    confirm_click = driver.find_element(By.XPATH, '//div[@class="css-ldo4d5"]/button')
+    confirm_click.click()
+    time.sleep(2)
 
-#--------------select category---------------
-category = driver.find_element(By.XPATH, '/html/body/div[1]/div[3]/div[3]/div[3]/div/div/div/button[2]')
-category.click()
-time.sleep(4)
+    save_click = driver.find_element(By.XPATH, '//div[@class="css-ldo4d5"]/button')
+    save_click.click()
 
-#-------------parser section----------------- 
-result = []
-# tite = '//h3[@class="sc-bxivhb bLhELA sc-189c7408-3 gnnFng"]'
+def select_category(driver):
+    """
+    Function to select the category of restaurants on the website.
+    """
+    category = driver.find_element(By.XPATH, '/html/body/div[1]/div[3]/div[3]/div[3]/div/div/div/button[2]')
+    category.click()
+    time.sleep(4)
+
+def extract_data(driver):
+    """
+    Function to extract data like name, price, and link for each restaurant from the page source.
+    """
+    result = []
+    content = driver.page_source
+    doc = lxml.html.fromstring(content)
+    title = doc.xpath('//h3[@class="sc-bxivhb bLhELA sc-189c7408-3 gnnFng"]')
+    price = doc.xpath('//span[@class="sc-bxivhb dVvqfA sc-189c7408-6 ixXqkX"]')
+    link = doc.xpath('//div[@class="sc-77e0e0c5-2 cLMlKB"]/a')
+
+    for i in range(len(title)):
+        result.append(
+                {
+                "Nombre": title[i].text.strip(),
+                "Precio": price[i].text.strip(),
+                "Link": link[i].get('href')
+                }
+                )
+    return result
+
+def save_results(result, address):
+    """
+    Function to save the extracted data into a CSV file with the specified address as the filename. '
+    """
+    df = pd.DataFrame(result)
+    df.to_csv(f'{address}.csv', index=False)
+    return df
+
+if __name__ == "__main__":
+    address = input("Ingrese la dirección: ")
+    start = datetime.datetime.now()
+    driver = initialize_driver(address)
+    extracted_data = extract_data(driver)
+    df = save_results(extracted_data, address)
+    print("Listo")
+    print(df)
+    finish = datetime.datetime.now() - start
+    print("Tiempo de ejecucion: ",finish)
+
 # time = '//span[@class="sc-bxivhb dVvqfA sc-189c7408-5 jeSkjq"]'
-# price = '//span[@class="sc-bxivhb dVvqfA sc-189c7408-6 ixXqkX"]'
-content = driver.page_source
-doc = lxml.html.fromstring(content)
-title = doc.xpath('//h3[@class="sc-bxivhb bLhELA sc-189c7408-3 gnnFng"]')
-price = doc.xpath('//span[@class="sc-bxivhb dVvqfA sc-189c7408-6 ixXqkX"]')
-link = doc.xpath('//div[@class="sc-77e0e0c5-2 cLMlKB"]/a')
-
-#------------Results------------------------
-for i in range(len(title)):
-    result.append(
-            {
-            "Nombre": title[i].text.strip(),
-            "Precio": price[i].text.strip(),
-            "Link": link[i].get('href')
-            }
-            )
-df = pd.DataFrame(result)
-df.to_csv(f'{adress}.csv', index=False)
-
-#stop = input("esto es para detener",)
-
-print("Listo")
-print(df)
+#adress = "Malabia 500, capital federal"

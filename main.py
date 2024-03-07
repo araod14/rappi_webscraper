@@ -26,7 +26,7 @@ def initialize_driver(address):
 
     add_address(driver, address)
     select_category(driver)
-
+    
     return driver
 
 def add_address(driver, address):
@@ -51,6 +51,7 @@ def add_address(driver, address):
 
     save_click = driver.find_element(By.XPATH, '//div[@class="css-ldo4d5"]/button')
     save_click.click()
+    print("Direccion agregada")
 
 def select_category(driver):
     """
@@ -59,22 +60,33 @@ def select_category(driver):
     category = driver.find_element(By.XPATH, '/html/body/div[1]/div[3]/div[3]/div[3]/div/div/div/button[2]')
     category.click()
     time.sleep(4)
+    print("Categoria Seleccionada")
 
 def extract_data(driver):
     """
     Function to extract data like name, price, and link for each restaurant from the page source.
     """
     result = []
+    time_list_raw = []
+    time_list = []
+    print("Extrayendo datos")
     content = driver.page_source
     doc = lxml.html.fromstring(content)
     title = doc.xpath('//h3[@class="sc-bxivhb bLhELA sc-189c7408-3 gnnFng"]')
     price = doc.xpath('//span[@class="sc-bxivhb dVvqfA sc-189c7408-6 ixXqkX"]')
     link = doc.xpath('//div[@class="sc-77e0e0c5-2 cLMlKB"]/a')
+    times = doc.xpath('//span[@class="sc-bxivhb dVvqfA sc-189c7408-5 jeSkjq"]')
 
+    for i in range(len(times)):
+        time = times[i].text.strip()
+        time_list_raw.append(time)
+        time_list = time_list_raw[0::2]
+        
     for i in range(len(title)):
         result.append(
                 {
                 "Nombre": title[i].text.strip(),
+                "Tiempo": time_list[i],
                 "Precio": price[i].text.strip(),
                 "Link": link[i].get('href')
                 }
@@ -91,14 +103,16 @@ def save_results(result, address):
 
 if __name__ == "__main__":
     address = input("Ingrese la dirección: ")
+    print("Abriendo navegador")
     start = datetime.datetime.now()
     driver = initialize_driver(address)
     extracted_data = extract_data(driver)
     df = save_results(extracted_data, address)
     print("Listo")
-    print(df)
+    #print(df)
     finish = datetime.datetime.now() - start
     print("Tiempo de ejecucion: ",finish)
+    
 
 # time = '//span[@class="sc-bxivhb dVvqfA sc-189c7408-5 jeSkjq"]'
 #adress = "Malabia 500, capital federal"
